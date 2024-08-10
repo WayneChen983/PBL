@@ -3,10 +3,10 @@
 Ultrasonic ultrasonic(9, 10); // "Create an Ultrasonic object."
 int distance_threshold = 50;
 
-int In1 = 4; // set L298n PIN
-int In2 = 5;
-int In3 = 6;
-int In4 = 7;
+int In1 = 33; // set L298n PIN
+int In2 = 32;
+int In3 = 31;
+int In4 = 30;
 // Enable pins
 int enA = 8;
 int enB = 9;
@@ -104,17 +104,17 @@ void backward_control(int left_speed, int right_speed)
 }
 void turn_right()
 {
-  forward_control(0, 120); // Going forward and turning
+  forward_control(0, 255); // Going forward and turning
 }
 void turn_left()
 {
-  forward_control(120, 0); // Going forward and turning
+  forward_control(255, 0); // Going forward and turning
 }
 void go_forward(){
-  forward_control(120, 120);
+  forward_control(255, 255);
 }
 void go_backward(){
-  backward_control(120, 120);
+  backward_control(255, 255);
 }
 
 bool check_color(int color)

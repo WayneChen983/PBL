@@ -3,7 +3,7 @@
 
 Servo myservo; // Create a SERVO object
 void setup() {
-  myservo.attach(9); // Set which PIN the servo motor will be connected to
+  myservo.attach(4); // Set which PIN the servo motor will be connected to
 }
 void loop() {
   myservo.write(0); // Rotate to 0 degrees, which is commonly referred to as
