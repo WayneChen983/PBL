@@ -1,3 +1,8 @@
+#include <Ultrasonic.h>
+
+Ultrasonic ultrasonic(9, 10); // "Create an Ultrasonic object."
+int distance_threshold = 50;
+
 int In1 = 4; // set L298n PIN
 int In2 = 5;
 int In3 = 6;
@@ -6,10 +11,10 @@ int In4 = 7;
 int enA = 8;
 int enB = 9;
 
-int distance_threshold = 10; // Change the value here
 bool box_detected = false;
 void setup()
 {
+  Serial.begin(9600);
   pinMode(In1, OUTPUT); // Arduino control a car using output voltage
   pinMode(In2, OUTPUT);
   pinMode(In3, OUTPUT);
@@ -28,25 +33,46 @@ void loop()
     {
       if (measure_distance() <= distance_threshold)
       {
-        mstop();
+        stop_motors();
         pick();
       }
       else
       {
-        forward_control(255, 255);
+        go_forward();
       }
     }
     else
     {
-      forward_control(100, 255); // Going forward and turning
+      go_forward(); // Going forward and turning
+      delay(1000);
+      turn_right();
+      delay(1000);
+
     }
   }
   else
   {
-    forward_control(100, 255); // Going forward and turning
+    go_forward(); // Going forward and turning
+    delay(1000);
+    if (should_stop()){
+      go_backward();
+      delay(1000);
+      turn_right();
+      delay(500);
+      go_forward();
+      delay(1000);
+    }
+  }
+  if (should_stop()){
+    go_backward();
+    delay(1000);
+    turn_right();
+    delay(1000);
+    go_forward();
+    delay(1000);
   }
 }
-void mstop()
+void stop_motors()
 { // stop motor
   analogWrite(enA, 0);
   analogWrite(enB, 0);
@@ -55,7 +81,7 @@ void mstop()
   digitalWrite(In3, LOW);
   digitalWrite(In4, LOW);
 }
-void forward_control(int right_speed, int left_speed)
+void forward_control(int left_speed, int right_speed)
 { // motor go front
 
   // Speed control
@@ -67,7 +93,7 @@ void forward_control(int right_speed, int left_speed)
   digitalWrite(In3, LOW);
   digitalWrite(In4, HIGH);
 }
-void backward_control(int right_speed, int left_speed)
+void backward_control(int left_speed, int right_speed)
 {                                // motor go back
   analogWrite(enA, right_speed); // max speed
   analogWrite(enB, left_speed);  // max speed
@@ -76,7 +102,6 @@ void backward_control(int right_speed, int left_speed)
   digitalWrite(In3, HIGH);
   digitalWrite(In4, LOW);
 }
-
 void turn_right()
 {
   forward_control(0, 120); // Going forward and turning
@@ -107,8 +132,18 @@ bool check_color(int color)
 int measure_distance()
 {
   // Mesaure the distance using ultrasonic sensor
-  int distance = 10;
+  int distance = ultrasonic.read(); // Without parameters, it outputs in  return distance;
   return distance;
+}
+
+bool should_stop(){
+  int distance = measure_distance();
+  if (distance < distance_threshold){
+    return true;
+  }
+  else{
+    return false;
+  }
 }
 
 void pick()
@@ -117,5 +152,6 @@ void pick()
 
 bool detect_box()
 {
-  return true;
+  return false;
 }
+
