@@ -79,6 +79,17 @@ void backward_control(int right_speed, int left_speed)
 
 void turn_right()
 {
+  forward_control(0, 120); // Going forward and turning
+}
+void turn_left()
+{
+  forward_control(120, 0); // Going forward and turning
+}
+void go_forward(){
+  forward_control(120, 120);
+}
+void go_backward(){
+  backward_control(120, 120);
 }
 
 bool check_color(int color)
