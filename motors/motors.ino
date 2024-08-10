@@ -62,18 +62,18 @@ void forward_control(int right_speed, int left_speed)
   analogWrite(enA, right_speed); // max speed
   analogWrite(enB, left_speed);  // max speed
 
-  digitalWrite(In1, LOW);
+  digitalWrite(In1, HIGH);
   digitalWrite(In2, LOW);
-  digitalWrite(In3, HIGH);
+  digitalWrite(In3, LOW);
   digitalWrite(In4, HIGH);
 }
 void backward_control(int right_speed, int left_speed)
 {                                // motor go back
   analogWrite(enA, right_speed); // max speed
   analogWrite(enB, left_speed);  // max speed
-  digitalWrite(In1, HIGH);
+  digitalWrite(In1, LOW);
   digitalWrite(In2, HIGH);
-  digitalWrite(In3, LOW);
+  digitalWrite(In3, HIGH);
   digitalWrite(In4, LOW);
 }
 
