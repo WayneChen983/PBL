@@ -10,10 +10,10 @@ float integrator = 0;
 float kp = 5;
 float ki = 0;
 
-int In1 = 4; // set L298n PIN
-int In2 = 5;
-int In3 = 6;
-int In4 = 7;
+int In1 = 33; // set L298n PIN
+int In2 = 32;
+int In3 = 31;
+int In4 = 30;
 // Enable pins
 int enA = 8;
 int enB = 9;
