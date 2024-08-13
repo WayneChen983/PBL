@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include <NewPing.h>
 
-#define SONAR_NUM 3      // Number of sensors.
+#define SONAR_NUM 4      // Number of sensors.
 #define MAX_DISTANCE 350
 
 #define AVOIDANCE_TURNING_DELAY 1500
@@ -31,10 +31,12 @@ int distance_threshold = 60;
 
 int distances[3] = {0, 0, 0}; // Initialize ultrasonic sensors distances
 
-NewPing sonar[SONAR_NUM] = {   // Sensor object array.
-  NewPing(4, 5, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping. 
-  NewPing(2, 3, MAX_DISTANCE), 
-  NewPing(12, 13, MAX_DISTANCE)
+// Sensor object array.
+NewPing sonar[SONAR_NUM] = {   
+  NewPing(4, 5, MAX_DISTANCE), //(trig,echo)
+  NewPing(2, 3, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping. 
+  NewPing(12, 13, MAX_DISTANCE),
+  NewPing(10, 11, MAX_DISTANCE)
 };
 
 void setup() {
