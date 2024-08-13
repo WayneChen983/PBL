@@ -1,5 +1,14 @@
 #include <Pixy2.h>
 #include <SPI.h>
+#include <NewPing.h>
+
+#define SONAR_NUM 3      // Number of sensors.
+#define MAX_DISTANCE 350
+
+#define AVOIDANCE_TURNING_DELAY 1500
+#define DRIVE_DELAY 500
+
+// Right is 2, center is 1, left is 0
 
 Pixy2 pixy;
 
@@ -18,7 +27,15 @@ int In4 = 26;
 int enA = 8;
 int enB = 9;
 
-int distance_threshold = 50;
+int distance_threshold = 60;
+
+int distances[3] = {0, 0, 0}; // Initialize ultrasonic sensors distances
+
+NewPing sonar[SONAR_NUM] = {   // Sensor object array.
+  NewPing(4, 5, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping. 
+  NewPing(2, 3, MAX_DISTANCE), 
+  NewPing(12, 13, MAX_DISTANCE)
+};
 
 void setup() {
   Serial.begin(9600);
@@ -36,21 +53,20 @@ void setup() {
 }
 
 void loop() {
-  get_camera_output();
+  // get_camera_output();
 
-  Serial.print("x: "); Serial.print(x); Serial.print(",");
-  Serial.print("y: "); Serial.print(y); Serial.print(",");
-  if (!compare_float(x,-0.92)){
-    float control_variable = calculate_pid(0.0, x);
-    control_variable_to_speed(control_variable);
-  }
-  else{
-    stop_motors();
-    Serial.println("motors stopped");
-  }
-  // forward_control(0, 255);
-  // delay(1000);
-
+  // Serial.print("x: "); Serial.print(x); Serial.print(",");
+  // Serial.print("y: "); Serial.print(y); Serial.print(",");
+  // if (!compare_float(x,-0.92)){
+  //   float control_variable = calculate_pid(0.0, x);
+  //   // control_variable_to_speed(control_variable);
+  // }
+  // else{
+  //   stop_motors();
+  //   Serial.println("motors stopped");
+  // }
+  obstacle_avoidance();
+  // turn_left();
 }
 
 
@@ -123,11 +139,11 @@ void backward_control(int left_speed, int right_speed)
 }
 void turn_right()
 {
-  forward_control(0, 120); // Going forward and turning
+  forward_control(0, 255); // Going forward and turning
 }
 void turn_left()
 {
-  forward_control(120, 0); // Going forward and turning
+  forward_control(255, 0); // Going forward and turning
 }
 void go_forward(){
   forward_control(255, 255);
@@ -165,7 +181,6 @@ void get_camera_output(){
 
     float x1, y1, z1;
     //double x2, y2, z2;
-    //x1 = 0.26 * ((pixy.ccc.blocks[0].m_x) );
     x1 = 0.26 * (pixy.ccc.blocks[0].m_x) - 42 ;
     y1 = 0.26 * (pixy.ccc.blocks[0].m_y) - 28;
 
@@ -214,3 +229,109 @@ int compare_float(float f1, float f2)
     return 0;
    }
  }
+
+void obstacle_avoidance() { 
+  read_ultrasonic_values();
+  int choice = 0;
+  for (int i=0; i < SONAR_NUM; i++){
+    int result = check_wall_collision(distances[i]);
+    choice += result * round(pow(10, i));
+    Serial.print(i); Serial.print("="); Serial.print(result); Serial.print(" "); 
+  }
+  // choice += 1;
+  Serial.print("Choice: "); Serial.println(choice);
+  avoid_wall(choice);
+}
+
+void avoid_wall(int choice){  
+    if (choice == 1)//turn left 20 degree;
+    {
+      go_backward();
+      delay(DRIVE_DELAY);
+      turn_right();
+      delay(AVOIDANCE_TURNING_DELAY);
+      go_forward();
+      delay(DRIVE_DELAY);
+      Serial.println("Case 001");
+    }
+    else if (choice == 10)//turn_right_20_degree;
+    {
+      go_backward();
+      delay(DRIVE_DELAY);
+      turn_left();
+      delay(AVOIDANCE_TURNING_DELAY);
+      go_forward();
+      delay(DRIVE_DELAY);
+      Serial.println("Case 010");
+    }
+   // case 011:
+    else if (choice == 100)//turn_right_90_degree;
+    {
+      go_backward();
+      delay(DRIVE_DELAY);
+      turn_left();
+      delay(AVOIDANCE_TURNING_DELAY);
+      go_forward();
+      delay(DRIVE_DELAY);
+      Serial.println("Case 100");
+    }
+    else if (choice == 101)//turn_right_90_degree;
+    {
+      go_backward();
+      delay(DRIVE_DELAY);
+      turn_right();
+      delay(AVOIDANCE_TURNING_DELAY);
+      go_forward();
+      delay(DRIVE_DELAY);
+      Serial.println("Case 101");
+
+    }
+    else if (choice == 110)//turn_left_90_degree;
+    {
+      go_backward();
+      delay(DRIVE_DELAY);
+      turn_right();
+      delay(AVOIDANCE_TURNING_DELAY);
+      go_forward();
+      delay(DRIVE_DELAY);
+      Serial.println("Case 110");
+
+    }
+    else if (choice == 111)//turn_left_90_degree;
+    {
+      go_backward();
+      delay(DRIVE_DELAY);
+      turn_left();
+      delay(AVOIDANCE_TURNING_DELAY);
+      go_forward();
+      delay(DRIVE_DELAY);
+      Serial.println("Case 111");
+    }
+    else//continue
+    {
+      go_forward();
+      delay(DRIVE_DELAY);
+      Serial.println("Else");
+    }
+}
+
+
+int check_wall_collision(int x)//for ultrasonic
+ {
+    if(x<distance_threshold && x != 0){
+      return 1;
+    }
+    else return 0;
+}
+
+void read_ultrasonic_values(){
+  for (uint8_t i = 0; i < SONAR_NUM; i++) { // Loop through each sensor and display results.
+    delay(50); // Wait 50ms between pings (about 20 pings/sec). 29ms should be the shortest delay between pings.
+    Serial.print(i);
+    Serial.print("=");
+    Serial.print(sonar[i].ping_cm());
+    Serial.print("cm ");
+    distances[i] = sonar[i].ping_cm();
+  }
+  Serial.println();
+}
