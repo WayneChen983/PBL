@@ -7,13 +7,13 @@ float x, y, z;
 int t = 0;
 
 float integrator = 0;
-float kp = 5;
+float kp = 6;
 float ki = 0;
 
-int In1 = 33; // set L298n PIN
-int In2 = 32;
-int In3 = 31;
-int In4 = 30;
+int In1 = 29; // set L298n PIN
+int In2 = 28;
+int In3 = 27;
+int In4 = 26;
 // Enable pins
 int enA = 8;
 int enB = 9;
@@ -38,12 +38,21 @@ void setup() {
 void loop() {
   get_camera_output();
 
-  float control_variable = calculate_pid(0.0, x);
-  control_variable_to_speed(control_variable);
-  forward_control(255, 255);
-  
+  Serial.print("x: "); Serial.print(x); Serial.print(",");
+  Serial.print("y: "); Serial.print(y); Serial.print(",");
+  if (!compare_float(x,-0.92)){
+    float control_variable = calculate_pid(0.0, x);
+    control_variable_to_speed(control_variable);
+  }
+  else{
+    stop_motors();
+    Serial.println("motors stopped");
+  }
+  // forward_control(0, 255);
+  // delay(1000);
 
 }
+
 
 float calculate_pid(float setpoint, float process_variable){
   float difference = setpoint - process_variable;
@@ -54,16 +63,16 @@ float calculate_pid(float setpoint, float process_variable){
 }
 
 void control_variable_to_speed(float control_variable){
-  float right_speed = 255;
-  float left_speed = 255;
+  float right_speed = 150;
+  float left_speed = 150;
 
   Serial.print("CV:"); Serial.print(control_variable);
   
-  if (control_variable < -255){
-    control_variable = -255;
+  if (control_variable < -150){
+    control_variable = -150;
   }
-  else if (control_variable > 255){
-    control_variable = 255;
+  else if (control_variable > 150){
+    control_variable = 150;
   }
 
   if (control_variable < 0){
@@ -73,8 +82,8 @@ void control_variable_to_speed(float control_variable){
     left_speed -= control_variable;
   }
   else{
-    right_speed = 255;
-    left_speed = 255;
+    right_speed = 150;
+    left_speed = 150;
   }
 
   Serial.print("left_speed:"); Serial.print(left_speed); Serial.print(",");
@@ -98,19 +107,19 @@ void forward_control(int left_speed, int right_speed)
   analogWrite(enA, right_speed); // max speed
   analogWrite(enB, left_speed);  // max speed
 
-  digitalWrite(In1, HIGH);
-  digitalWrite(In2, LOW);
-  digitalWrite(In3, LOW);
-  digitalWrite(In4, HIGH);
+  digitalWrite(In1, LOW);
+  digitalWrite(In2, HIGH);
+  digitalWrite(In3, HIGH);
+  digitalWrite(In4, LOW);
 }
 void backward_control(int left_speed, int right_speed)
 {                                // motor go back
   analogWrite(enA, right_speed); // max speed
   analogWrite(enB, left_speed);  // max speed
-  digitalWrite(In1, LOW);
-  digitalWrite(In2, HIGH);
-  digitalWrite(In3, HIGH);
-  digitalWrite(In4, LOW);
+  digitalWrite(In1, HIGH);
+  digitalWrite(In2, LOW);
+  digitalWrite(In3, LOW);
+  digitalWrite(In4, HIGH);
 }
 void turn_right()
 {
@@ -121,7 +130,7 @@ void turn_left()
   forward_control(120, 0); // Going forward and turning
 }
 void go_forward(){
-  forward_control(120, 120);
+  forward_control(255, 255);
 }
 void go_backward(){
   backward_control(120, 120);
@@ -183,11 +192,25 @@ void get_camera_output(){
 
     z = 0;
 
-
-    Serial.print('x'); Serial.print(x); Serial.print(",");
-    Serial.print('y'); Serial.print(y); Serial.print(",");
     // Serial.print('z'); Serial.println(z);
     delay(10);
 
   }
 }
+bool should_stop(){
+  return false;
+}
+
+int compare_float(float f1, float f2)
+ {
+  float precision = 0.00001;
+  if (((f1 - precision) < f2) && 
+      ((f1 + precision) > f2))
+   {
+    return 1;
+   }
+  else
+   {
+    return 0;
+   }
+ }
