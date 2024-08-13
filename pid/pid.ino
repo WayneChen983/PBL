@@ -55,20 +55,20 @@ void setup() {
 }
 
 void loop() {
-  // get_camera_output();
+  get_camera_output();
 
-  // Serial.print("x: "); Serial.print(x); Serial.print(",");
-  // Serial.print("y: "); Serial.print(y); Serial.print(",");
-  // if (!compare_float(x,-0.92)){
-  //   float control_variable = calculate_pid(0.0, x);
-  //   // control_variable_to_speed(control_variable);
-  // }
-  // else{
-  //   stop_motors();
-  //   Serial.println("motors stopped");
-  // }
+  Serial.print("x: "); Serial.print(x); Serial.print(",");
+  Serial.print("y: "); Serial.print(y); Serial.print(",");
+  if (!compare_float(x,-0.92)){
+    float control_variable = calculate_pid(0.0, x);
+    control_variable_to_speed(control_variable);
+  }
+  else{
+    stop_motors();
+    Serial.println("motors stopped");
+  }
+
   obstacle_avoidance();
-  // turn_left();
 }
 
 
