@@ -21,7 +21,7 @@ float integrator = 0;
 float kp = 6; // Porpotional parameter
 float ki = 0; // Integral parameter
 float center_coordinate = 0.0;
-
+int chosen_block = 0;
 int distance_threshold = DISTANT_THRESHOLD; // The distance thresh hold to capture the block or distance of the walls
 
 //Motor speed variables
@@ -34,11 +34,11 @@ int In1 = 29; // Left upper wheels
 int In2 = 28; // Right upper wheels
 int In3 = 27; // Left back wheels 
 int In4 = 26; // Right back wheels
-
+unsigned long startTime = millis();
 // Enable pins
 int enA = 8;
 int enB = 9;
-
+int i = 0;
 //Declaring functions
 void get_camera_output(); // detect color and coordinate of the objects
 void calculate_pid(float, float); // PID controller algorithm, using the P & I 
@@ -71,11 +71,21 @@ void setup() {
 }
 
 void loop() {
+    get_camera_output();
   // Act based on the highest priority color detected
     if (color == RED) {  // Red
-      Serial.println("Red cube detected, picking up...");
-      calculate_pid(center_coordinate, current_X);
-      control_variable_to_speed(control_variable);
+      //unsigned long startTime = millis();
+      get_camera_output();
+      while(i < 50) {
+        get_camera_output();
+        Serial.println("Red cube detected, picking up...");
+        calculate_pid(center_coordinate, current_X);
+        control_variable_to_speed(control_variable);
+        Serial.print('control_right_speed'); Serial.print(control_right_speed);
+        Serial.print('control_left_speed'); Serial.print(control_left_speed);
+        ++i;
+      }
+      i = 0;
       // arm_down();
       // grabber_on();
       // arm_up();
@@ -83,9 +93,17 @@ void loop() {
       // pick();
     } 
     else if (color == GREEN) {  // Green
+    get_camera_output();
+     while(i < 50) {
+      get_camera_output();
       Serial.println("Green cube detected, picking up...");
       calculate_pid(center_coordinate, current_X);
       control_variable_to_speed(control_variable);
+      Serial.print('control_right_speed'); Serial.print(control_right_speed);
+      Serial.print('control_left_speed'); Serial.print(control_left_speed);
+      ++i;
+     }
+     i = 0;
       // arm_down();
       // grabber_on();
       // arm_up();
@@ -93,9 +111,11 @@ void loop() {
       // pick();
     }
     else {
-      go_forward(constant_speed);
-      delay(1000);
-      rotate(130, true);
+      // go_forward(constant_speed);
+      // delay(1000);
+      // rotate(130, true);
+      Serial.print("Detected shit!");
+      stop();
       //wall_detection();
       get_camera_output();
     } 
@@ -117,20 +137,22 @@ void get_camera_output(){
       if (detected_color == 1 && highest_priority > 1) {
         color = 1;  // Red has the highest priority
         highest_priority = 1;
+        chosen_block = i;
       } 
       else if (detected_color == 2 && highest_priority >= 2) {
         color = 2;  // Green has middle priority
         highest_priority = 2;
+        chosen_block = i;
       } 
     }
   }
   //double x2, y2, z2; 
     //x1 = 0.26 * ((pixy.ccc.blocks[0].m_x) );
-    float detected_X = 0.26 * (pixy.ccc.blocks[0].m_x) - 42;
-    float detected_Y = 0.26 * (pixy.ccc.blocks[0].m_y) - 28;
+    float detected_X = 0.26 * (pixy.ccc.blocks[chosen_block].m_x) - 42;
+    float detected_Y = 0.26 * (pixy.ccc.blocks[chosen_block].m_y) - 28;
 
-    float detected_height = 0.26 * (pixy.ccc.blocks[0].m_height);
-    float detected_width = 0.26 * (pixy.ccc.blocks[0].m_width);
+    float detected_height = 0.26 * (pixy.ccc.blocks[chosen_block].m_height);
+    float detected_width = 0.26 * (pixy.ccc.blocks[chosen_block].m_width);
     //float temp = h * w;
     //float z1 = 62 - (sqrt(18 * 18 / temp)) * 58 ;
 
@@ -160,7 +182,9 @@ void calculate_pid(float setpoint, float process_variable){
 
 void control_variable_to_speed(float control_variable){
   Serial.print("CV:"); Serial.print(control_variable);
-  
+  control_right_speed = MAX_SPEED;
+  control_left_speed = MAX_SPEED;
+
   if (control_variable < -MAX_SPEED){
     control_variable = -MAX_SPEED;
   }
