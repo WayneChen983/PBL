@@ -5,7 +5,7 @@
 #define SONAR_NUM 4      // Number of sensors.
 #define MAX_DISTANCE 350
 
-#define AVOIDANCE_TURNING_DELAY 1500
+#define AVOIDANCE_TURNING_DELAY 800
 #define DRIVE_DELAY 500
 
 // Right is 2, center is 1, left is 0
