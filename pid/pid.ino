@@ -260,6 +260,11 @@ int compare_float(float f1, float f2)
 void obstacle_avoidance()
 {
   read_ultrasonic_values();
+  int choice = calculate_choice();
+  avoid_wall(choice);
+}
+
+int calculate_choice(){
   int choice = 0;
   for (int i = 0; i < SONAR_NUM; i++)
   {
@@ -273,7 +278,7 @@ void obstacle_avoidance()
   // choice += 1;
   Serial.print("Choice: ");
   Serial.println(choice);
-  avoid_wall(choice);
+  return choice;
 }
 
 void avoid_wall(int choice)
