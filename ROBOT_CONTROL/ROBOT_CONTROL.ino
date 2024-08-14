@@ -1,6 +1,10 @@
 #include <Pixy2.h>
 #include <SPI.h>
-#define MAX_SPEED 220
+#include <NewPing.h>
+
+#define SONAR_NUM 3 // Number of sensors.
+#define MAX_DISTANCE 350
+#define MAX_SPEED 255
 #define CONSTANT_SPEED 120
 #define DISTANT_THRESHOLD 50
 #define WHITE -1
@@ -8,6 +12,10 @@
 #define GREEN 2
 #define FIRST_PRIORITY 1
 #define SECOND_PRIORITY 2
+
+#define AVOIDANCE_TURNING_DELAY 800
+#define BACKWARD_DRIVE_DELAY 800
+
 Pixy2 pixy; // Declare pixy camera object
 
 // Detecting objects variables 
@@ -21,7 +29,7 @@ int time = 0;
 float control_variable;
 float difference;
 float integrator = 0;
-float kp = 5; // Porpotional parameter10
+float kp = 10; // Porpotional parameter10
 float ki = 0; // Integral parameter
 float center_coordinate = 0.0;
 int chosen_block = 0;
@@ -31,17 +39,31 @@ int distance_threshold = DISTANT_THRESHOLD; // The distance thresh hold to captu
 int constant_speed = CONSTANT_SPEED;
 int control_right_speed = MAX_SPEED;
 int control_left_speed = MAX_SPEED;
+bool clock_wise = 1;
+bool anti_clock_wise = 0;
 
 //Set LN298 pins
-int In1 = 29; // Left upper wheels 
-int In2 = 28; // Right upper wheels
-int In3 = 27; // Left back wheels 
-int In4 = 26; // Right back wheels
+int In1 = 25; // set L298n PIN
+int In2 = 24;
+int In3 = 23;
+int In4 = 22;
 unsigned long startTime = millis();
 // Enable pins
 int enA = 8;
 int enB = 9;
 int i = 0;
+
+// Initialize ultrasonic sensors distances
+int distances[4] = {0, 0, 0, 0}; 
+
+// Sensor object array.
+NewPing sonar[SONAR_NUM] = {
+    NewPing(4, 5, MAX_DISTANCE), //(trig,echo) left one
+    NewPing(12, 13, MAX_DISTANCE), // right
+    NewPing(10, 11, MAX_DISTANCE)}; // Bottom one
+
+    // NewPing(2, 3, MAX_DISTANCE), // center
+
 //Declaring functions
 void get_camera_output(); // detect color and coordinate of the objects
 void update_camera_output(); // continuously update the cube's coordinate for the PID controller
@@ -78,23 +100,29 @@ void setup() {
 
 void loop() {
     get_camera_output();
+    obstacle_avoidance();
   // Act based on the highest priority color detected
     if (color == RED) {  // Red
         get_camera_output();
         //Serial.println("Red cube detected, picking up...");
-        calculate_pid(center_coordinate, current_X);
+        calculate_pid(center_coordinate, -current_X);
         control_variable_to_speed(control_variable);
+        //get_camera_output();
     } 
     else if (color == GREEN) {  // Green
       get_camera_output();
       Serial.println("Green cube detected, picking up...");
-      calculate_pid(center_coordinate, current_X);
+      calculate_pid(center_coordinate, -current_X);
       control_variable_to_speed(control_variable);
+      //get_camera_output();
     }
     else {
-      go_forward(constant_speed);
-      //wall_detection();
+      go_forward(150);
+      delay(1000);
+      //rotate(100, clock_wise);
       get_camera_output();
+      obstacle_avoidance();
+      // get_camera_output();
     } 
 }
 
@@ -151,7 +179,7 @@ void get_block_coordinate() {
   }
 
   Serial.print('x: '); Serial.print(current_X); Serial.print(",");
-  Serial.print('y: '); Serial.print(current_Y); Serial.print(",");
+  Serial.print('y: '); Serial.print(current_Y); Serial.print(",\n");
     // Serial.print('z'); Serial.println(z);
   delay(10);
 }
@@ -265,38 +293,109 @@ void backward_control(int left_speed, int right_speed)
   digitalWrite(In4, HIGH);
 }
 
-// bool check_color(int color)
-// {
-//   if (color == 1 || color == 2)
-//   {
-//     return true;
-//   }
-//   else
-//   {
-//     return false;
-//   }
-// }
+void obstacle_avoidance()
+{
+  read_ultrasonic_values();
+  int choice = calculate_choice();
+  avoid_wall(choice);
+}
 
-//   void arm_down(){
-//     analogWrite(arm,100);
-//   }
-//   void arm_up(){
-//     analogWrite(arm,-100);
-//   }
-  
-//   void grabber_on(){
-//     analogWrite(grabber,100);
-//   }
-//   void grabber_off(){
-//     analogWrite(grabber,-100);
-//   }
+int calculate_choice(){
+  int choice = 0;
+  for (int i = 0; i < SONAR_NUM; i++)
+  {
+    int result = check_wall_collision(distances[i]);
+    choice += result * round(pow(10, i));
+    Serial.print(i);
+    Serial.print("=");
+    Serial.print(result);
+    Serial.print(" ");
+  }
+  // choice += 1;
+  Serial.print("Choice: ");
+  Serial.println(choice);
+  return choice;
+}
 
-//   void pick(){
-//     if(check_color(color))
-//     {
-//       arm_down();
-//       grabber_on();
-//       arm_up();
-//       grabber_off();
-//     }
-//   }
+void avoid_wall(int choice)
+{
+  if (choice == 1) // turn left 20 degree;
+  {
+    go_backward(255);
+    delay(BACKWARD_DRIVE_DELAY);
+    turn_right(255);
+    delay(AVOIDANCE_TURNING_DELAY);
+    Serial.println("Case 001");
+  }
+  else if (choice == 10) // turn_right_20_degree;
+  {
+    go_backward(255);
+    delay(BACKWARD_DRIVE_DELAY);
+    turn_left(255);
+    delay(AVOIDANCE_TURNING_DELAY);
+    Serial.println("Case 010");
+  }
+  // case 011:
+  else if (choice == 100) // turn_right_90_degree;
+  {
+    go_backward(255);
+    delay(BACKWARD_DRIVE_DELAY);
+    turn_left(255);
+    delay(AVOIDANCE_TURNING_DELAY);
+    Serial.println("Case 100");
+  }
+  else if (choice == 101) // turn_right_90_degree;
+  {
+    go_backward(255);
+    delay(BACKWARD_DRIVE_DELAY);
+    turn_right(255);
+    delay(AVOIDANCE_TURNING_DELAY);
+    Serial.println("Case 101");
+  }
+  else if (choice == 110) // turn_left_90_degree;
+  {
+    go_backward(255);
+    delay(BACKWARD_DRIVE_DELAY);
+    turn_right(255);
+    delay(AVOIDANCE_TURNING_DELAY);
+    Serial.println("Case 110");
+  }
+  else if (choice == 111) // turn_left_90_degree;
+  {
+    go_backward(255);
+    delay(BACKWARD_DRIVE_DELAY);
+    turn_left(255);
+    delay(AVOIDANCE_TURNING_DELAY);
+    Serial.println("Case 111");
+  }
+  else // continue
+  {
+    go_forward(150);
+    delay(BACKWARD_DRIVE_DELAY);
+    Serial.println("Else");
+  }
+}
+
+int check_wall_collision(int x) // for ultrasonic
+{
+  if (x < distance_threshold && x != 0)
+  {
+    return 1;
+  }
+  else
+    return 0;
+}
+
+void read_ultrasonic_values()
+{
+  for (uint8_t i = 0; i < SONAR_NUM; i++)
+  {            // Loop through each sensor and display results.
+    delay(30); // Wait 50ms between pings (about 20 pings/sec). 29ms should be the shortest delay between pings.
+    Serial.print(i);
+    Serial.print("=");
+    Serial.print(sonar[i].ping_cm());
+    Serial.print("cm ");
+    distances[i] = sonar[i].ping_cm();
+  }
+  Serial.println();
+}
