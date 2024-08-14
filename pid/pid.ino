@@ -7,6 +7,7 @@
 
 #define AVOIDANCE_TURNING_DELAY 800
 #define DRIVE_DELAY 500
+#define MAX_SPEED 255
 
 // Right is 2, center is 1, left is 0
 
@@ -16,13 +17,13 @@ float x, y, z;
 int t = 0;
 
 float integrator = 0;
-float kp = 6;
+float kp = 15;
 float ki = 0;
 
-int In1 = 29; // set L298n PIN
-int In2 = 28;
-int In3 = 27;
-int In4 = 26;
+int In1 = 25; // set L298n PIN
+int In2 = 24;
+int In3 = 23;
+int In4 = 22;
 // Enable pins
 int enA = 8;
 int enB = 9;
@@ -66,7 +67,7 @@ void loop()
   Serial.print(",");
   if (!compare_float(x, -0.92))
   {
-    float control_variable = calculate_pid(0.0, x);
+    float control_variable = calculate_pid(0.0, -x);
     control_variable_to_speed(control_variable);
   }
   else
@@ -75,7 +76,7 @@ void loop()
     Serial.println("motors stopped");
   }
 
-  obstacle_avoidance();
+  // obstacle_avoidance();
 }
 
 float calculate_pid(float setpoint, float process_variable)
@@ -89,19 +90,19 @@ float calculate_pid(float setpoint, float process_variable)
 
 void control_variable_to_speed(float control_variable)
 {
-  float right_speed = 150;
-  float left_speed = 150;
+  float right_speed = MAX_SPEED;
+  float left_speed = MAX_SPEED;
 
   Serial.print("CV:");
   Serial.print(control_variable);
 
-  if (control_variable < -150)
+  if (control_variable < -MAX_SPEED)
   {
-    control_variable = -150;
+    control_variable = -MAX_SPEED;
   }
-  else if (control_variable > 150)
+  else if (control_variable > MAX_SPEED)
   {
-    control_variable = 150;
+    control_variable = MAX_SPEED;
   }
 
   if (control_variable < 0)
@@ -114,8 +115,8 @@ void control_variable_to_speed(float control_variable)
   }
   else
   {
-    right_speed = 150;
-    left_speed = 150;
+    right_speed = MAX_SPEED;
+    left_speed = MAX_SPEED;
   }
 
   Serial.print("left_speed:");
