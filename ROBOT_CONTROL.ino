@@ -1,10 +1,13 @@
 #include <Pixy2.h>
 #include <SPI.h>
-#define MAX_SPEED 255
+#define MAX_SPEED 220
 #define CONSTANT_SPEED 120
 #define DISTANT_THRESHOLD 50
+#define WHITE -1
 #define RED 1
 #define GREEN 2
+#define FIRST_PRIORITY 1
+#define SECOND_PRIORITY 2
 Pixy2 pixy; // Declare pixy camera object
 
 // Detecting objects variables 
@@ -18,7 +21,7 @@ int time = 0;
 float control_variable;
 float difference;
 float integrator = 0;
-float kp = 6; // Porpotional parameter
+float kp = 5; // Porpotional parameter10
 float ki = 0; // Integral parameter
 float center_coordinate = 0.0;
 int chosen_block = 0;
@@ -41,6 +44,9 @@ int enB = 9;
 int i = 0;
 //Declaring functions
 void get_camera_output(); // detect color and coordinate of the objects
+void update_camera_output(); // continuously update the cube's coordinate for the PID controller
+void get_block_priority();
+void get_block_coordinate();
 void calculate_pid(float, float); // PID controller algorithm, using the P & I 
 void control_variable_to_speed(float); // convert control variable to speed of the motors
 void pid_speed_control_motor();
@@ -74,104 +80,80 @@ void loop() {
     get_camera_output();
   // Act based on the highest priority color detected
     if (color == RED) {  // Red
-      //unsigned long startTime = millis();
-      get_camera_output();
-      while(i < 50) {
         get_camera_output();
-        Serial.println("Red cube detected, picking up...");
+        //Serial.println("Red cube detected, picking up...");
         calculate_pid(center_coordinate, current_X);
         control_variable_to_speed(control_variable);
-        Serial.print('control_right_speed'); Serial.print(control_right_speed);
-        Serial.print('control_left_speed'); Serial.print(control_left_speed);
-        ++i;
-      }
-      i = 0;
-      // arm_down();
-      // grabber_on();
-      // arm_up();
-      // grabber_off();
-      // pick();
     } 
     else if (color == GREEN) {  // Green
-    get_camera_output();
-     while(i < 50) {
       get_camera_output();
       Serial.println("Green cube detected, picking up...");
       calculate_pid(center_coordinate, current_X);
       control_variable_to_speed(control_variable);
-      Serial.print('control_right_speed'); Serial.print(control_right_speed);
-      Serial.print('control_left_speed'); Serial.print(control_left_speed);
-      ++i;
-     }
-     i = 0;
-      // arm_down();
-      // grabber_on();
-      // arm_up();
-      // grabber_off();
-      // pick();
     }
     else {
-      // go_forward(constant_speed);
-      // delay(1000);
-      // rotate(130, true);
-      Serial.print("Detected shit!");
-      stop();
+      go_forward(constant_speed);
       //wall_detection();
       get_camera_output();
     } 
 }
 
 void get_camera_output(){
-  int i;
+  //int i;
   pixy.ccc.getBlocks(); //captures how many blocks in one recent frame
-   
- if (pixy.ccc.numBlocks) {
-    highest_priority = 2;  //priority function, 1 is the highest 
-    color = -1;
+  get_block_priority();
+  get_block_coordinate();
+}
+
+void get_block_priority() {
+  if (pixy.ccc.numBlocks) {
+    highest_priority = SECOND_PRIORITY;  //priority function, 1 is the highest 
+    color = WHITE;
 
     // Loop through all detected blocks
-    for (int i = 0; i < pixy.ccc.numBlocks; i++) {
+    for (int block_index = 0; block_index < pixy.ccc.numBlocks; ++block_index) {
       detected_color = pixy.ccc.blocks[i].m_signature;
 
       // Update if a higher-priority color is detected
-      if (detected_color == 1 && highest_priority > 1) {
-        color = 1;  // Red has the highest priority
-        highest_priority = 1;
-        chosen_block = i;
+      if (detected_color == RED && highest_priority > FIRST_PRIORITY) {
+        color = RED;  // Red has the highest priority
+        highest_priority = FIRST_PRIORITY;
+        chosen_block = block_index;
       } 
-      else if (detected_color == 2 && highest_priority >= 2) {
-        color = 2;  // Green has middle priority
-        highest_priority = 2;
-        chosen_block = i;
+      else if (detected_color == GREEN && highest_priority >= SECOND_PRIORITY) {
+        color = GREEN;  // Green has middle priority
+        highest_priority = SECOND_PRIORITY;
+        chosen_block = block_index;
       } 
     }
   }
-  //double x2, y2, z2; 
-    //x1 = 0.26 * ((pixy.ccc.blocks[0].m_x) );
-    float detected_X = 0.26 * (pixy.ccc.blocks[chosen_block].m_x) - 42;
-    float detected_Y = 0.26 * (pixy.ccc.blocks[chosen_block].m_y) - 28;
+}
 
-    float detected_height = 0.26 * (pixy.ccc.blocks[chosen_block].m_height);
-    float detected_width = 0.26 * (pixy.ccc.blocks[chosen_block].m_width);
+void get_block_coordinate() {
+  float detected_X = 0.26 * (pixy.ccc.blocks[chosen_block].m_x) - 42;
+  float detected_Y = 0.26 * (pixy.ccc.blocks[chosen_block].m_y) - 28;
+
+  float detected_height = 0.26 * (pixy.ccc.blocks[chosen_block].m_height);
+  float detected_width = 0.26 * (pixy.ccc.blocks[chosen_block].m_width);
     //float temp = h * w;
     //float z1 = 62 - (sqrt(18 * 18 / temp)) * 58 ;
 
-    if (time == 0) { //inital time
-      current_X = detected_X;
-      current_Y = detected_Y;
-      time++;
-    }
-    if (abs(current_X - detected_X) > 5) {
-      current_X = detected_X;
-    }
-    if (abs(current_Y - detected_Y) > 5) {
-      current_Y = detected_Y;
-    }
+  if (time == 0) { //inital time
+    current_X = detected_X;
+    current_Y = detected_Y;
+    time++;
+  }
+  if (abs(current_X - detected_X) > 5) {
+    current_X = detected_X;
+  }
+  if (abs(current_Y - detected_Y) > 5) {
+    current_Y = detected_Y;
+  }
 
-    Serial.print('x'); Serial.print(current_X); Serial.print(",");
-    Serial.print('y'); Serial.print(current_Y); Serial.print(",");
+  Serial.print('x: '); Serial.print(current_X); Serial.print(",");
+  Serial.print('y: '); Serial.print(current_Y); Serial.print(",");
     // Serial.print('z'); Serial.println(z);
-    delay(10);
+  delay(10);
 }
 
 void calculate_pid(float setpoint, float process_variable){
@@ -201,6 +183,13 @@ void control_variable_to_speed(float control_variable){
   else{
     control_right_speed = MAX_SPEED;
     control_left_speed = MAX_SPEED;
+  }
+
+  if (control_left_speed < 0){
+    control_left_speed = 0;
+  }
+  if (control_right_speed < 0){
+    control_right_speed = 0;
   }
 
   Serial.print("left_speed:"); Serial.print(control_left_speed); Serial.print(",");
@@ -260,20 +249,20 @@ void forward_control(int left_speed, int right_speed)
   analogWrite(enA, right_speed); // max speed
   analogWrite(enB, left_speed);  // max speed
 
-  digitalWrite(In1, HIGH);
-  digitalWrite(In2, LOW);
-  digitalWrite(In3, LOW);
-  digitalWrite(In4, HIGH);
+  digitalWrite(In1, LOW);
+  digitalWrite(In2, HIGH);
+  digitalWrite(In3, HIGH);
+  digitalWrite(In4, LOW);
 }
 
 void backward_control(int left_speed, int right_speed)
 {                                // motor go back
   analogWrite(enA, right_speed); // max speed
   analogWrite(enB, left_speed);  // max speed
-  digitalWrite(In1, LOW);
-  digitalWrite(In2, HIGH);
-  digitalWrite(In3, HIGH);
-  digitalWrite(In4, LOW);
+  digitalWrite(In1, HIGH);
+  digitalWrite(In2, LOW);
+  digitalWrite(In3, LOW);
+  digitalWrite(In4, HIGH);
 }
 
 // bool check_color(int color)
