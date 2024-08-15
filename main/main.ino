@@ -1,6 +1,7 @@
 #include <Pixy2.h>
 #include <SPI.h>
 #include <NewPing.h>
+#include <Servo.h>   //it's in the ide already.
 
 #define SONAR_NUM 3 // Number of sensors.
 #define MAX_DISTANCE 350
@@ -16,8 +17,12 @@
 
 Pixy2 pixy;
 
+Servo myservo_grabber;  // create a servo object for gripper
+Servo myservo_arm;  // create a servo object for robotic arm
+
 float x, y, z;
 int t = 0;
+int detection_sensitivity = 3; // How many times cube needs to be detected for arm to move
 
 float integrator = 0;
 float kp = 15;
@@ -31,7 +36,11 @@ int In4 = 22;
 int enA = 8;
 int enB = 9;
 
-int distance_threshold = 10;
+int search_iterator = 0;
+
+int cube_distance_threshold = 30; // Distance threshold to pick up the cube in cm
+
+int distance_threshold = 50;
 
 int distances[3] = {0, 0, 0}; // Initialize ultrasonic sensors distances
 
@@ -55,6 +64,12 @@ void setup()
   pinMode(enB, OUTPUT);
 
   pixy.init();
+
+  myservo_grabber.attach(3);  //set its pin
+  myservo_arm.attach(2);       //set its pin
+
+  myservo_grabber.write(180);    // initial the grabber be open
+  myservo_arm.write(180);        // initial the arm rasing
 }
 
 void loop()
@@ -72,6 +87,7 @@ void loop()
   {
     float control_variable = calculate_pid(0.0, -x);
     control_variable_to_speed(control_variable);
+    pick_or_not();
   }
   else
   {
@@ -128,6 +144,8 @@ void control_variable_to_speed(float control_variable)
   Serial.print(",");
   Serial.print("right_speed:");
   Serial.print(right_speed);
+  Serial.print(",");
+  Serial.print(distances[2]); Serial.print("cm");
   Serial.print("\n");
   forward_control(left_speed, right_speed);
 }
@@ -316,6 +334,7 @@ void avoid_wall(int choice)
     Serial.println("Case 4");
   }
   else{
+    // search();
     stop_motors();
   }
 }
@@ -345,8 +364,58 @@ void read_ultrasonic_values()
 }
 
 void search(){
-  go_forward();
+  forward_control(140, 140);
   delay(3000);
-  turn_right();
+  if (search_iterator < 3){
+    turn_right();
+    search_iterator++;
+  }
+  else{
+    turn_left();
+    search_iterator = 0;
+  }
   delay(500);
+}
+
+void pick_or_not(){
+  read_ultrasonic_values();
+  if (check_cube_distance() && t >= detection_sensitivity){
+    pick_the_cube();
+  }
+}
+
+bool check_cube_distance(){
+  if (y < 0){
+    t += 1;
+    return true;
+  }
+  else{
+    t = 0;
+    return false;
+  }
+}
+
+void pick_the_cube(){
+  Serial.print("Picking up");
+  stop_motors();
+  myservo_arm.write(0);        //1.the arm moves down
+  delay(2000);                   //the grabber is waiting the arm moving down for 2s
+  go_forward();
+  delay(800);
+  stop_motors();
+  myservo_grabber.write(110);      //2.grabber clamps
+  delay(2000);                   //the arm is waiting the grabber clamping  for 2s
+  // move_arm(180);  //3.the arm moves up
+  myservo_arm.write(180); 
+  delay(2000);                   //the grabber is waiting the arm moving down for 2s
+  myservo_grabber.write(180);    //4.grabber opens
+  go_backward();
+  delay(500);
+}
+
+void move_arm(int angle_setpoint){
+  for (int i=0; i<angle_setpoint; i++){
+    myservo_arm.write(i);  
+    delay(2);
+  }
 }
