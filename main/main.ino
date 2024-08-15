@@ -3,7 +3,7 @@
 #include <NewPing.h>
 #include <Servo.h>   //it's in the ide already.
 
-#define SONAR_NUM 3 // Number of sensors.
+#define SONAR_NUM 2 // Number of sensors.
 #define MAX_DISTANCE 350
 
 #define AVOIDANCE_TURNING_DELAY 800
@@ -52,13 +52,14 @@ int pick_up_threshold = 5;
 int distance_threshold = 50;
 float cube_size_threshold = 20.;
 
-int distances[3] = {0, 0, 0}; // Initialize ultrasonic sensors distances
+int distances[3] = {0, 0}; // Initialize ultrasonic sensors distances
 
 // Sensor object array.
 NewPing sonar[SONAR_NUM] = {
     NewPing(4, 5, MAX_DISTANCE), //(trig,echo) left one
-    NewPing(12, 13, MAX_DISTANCE), // right
-    NewPing(10, 11, MAX_DISTANCE)}; // Bottom one
+    NewPing(12, 13, MAX_DISTANCE) // right
+    }; // Bottom one
+// NewPing(10, 11, MAX_DISTANCE)
 
 void setup()
 {
@@ -355,18 +356,7 @@ void avoid_wall(int choice)
     // Serial.println("Case 4");
   // }
   else{
-    go_forward();
-    delay(50);
-    if (search_iterator > 20){
-      search_iterator = 0;
-    }
-    else if(search_iterator > 10){
-      turn_right();
-      search_iterator++;
-    }
-    else{
-      search_iterator++;
-    }
+    search();
   }
 }
 
@@ -395,17 +385,18 @@ void read_ultrasonic_values()
 }
 
 void search(){
-  forward_control(140, 140);
-  delay(3000);
-  if (search_iterator < 3){
+  if (search_iterator > 20){
+    search_iterator = 0;
+  }
+  else if(search_iterator > 15){
     turn_right();
     search_iterator++;
   }
   else{
-    turn_left();
-    search_iterator = 0;
+    search_iterator++;
+    go_forward();
   }
-  delay(500);
+  delay(50);
 }
 
 void pick_or_not(){
