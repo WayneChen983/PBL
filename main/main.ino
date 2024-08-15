@@ -52,7 +52,7 @@ int pick_up_threshold = 5;
 int distance_threshold = 50;
 float cube_size_threshold = 20.;
 
-int distances[3] = {0, 0}; // Initialize ultrasonic sensors distances
+int distances[2] = {0, 0}; // Initialize ultrasonic sensors distances
 
 // Sensor object array.
 NewPing sonar[SONAR_NUM] = {
