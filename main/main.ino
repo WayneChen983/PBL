@@ -8,7 +8,7 @@
 
 #define AVOIDANCE_TURNING_DELAY 800
 #define DRIVE_DELAY 500
-#define MAX_SPEED 255
+#define MAX_SPEED 200
 
 #define AVOIDANCE_TURNING_DELAY 800
 #define BACKWARD_DRIVE_DELAY 800
@@ -21,11 +21,13 @@ Servo myservo_grabber;  // create a servo object for gripper
 Servo myservo_arm;  // create a servo object for robotic arm
 
 float x, y, z;
+float h = 0.0;
+float w = 0.0;
 int t = 0;
 int detection_sensitivity = 3; // How many times cube needs to be detected for arm to move
 
 float integrator = 0;
-float kp = 15;
+float kp = 10;
 float ki = 0;
 
 int In1 = 25; // set L298n PIN
@@ -40,7 +42,15 @@ int search_iterator = 0;
 
 int cube_distance_threshold = 30; // Distance threshold to pick up the cube in cm
 
+bool collecting = false;
+int collecting_iterator = 0;
+int collecting_iterator_threshold = 5;
+
+int pick_up_iterator = 0;
+int pick_up_threshold = 5;
+
 int distance_threshold = 50;
+float cube_size_threshold = 20.;
 
 int distances[3] = {0, 0, 0}; // Initialize ultrasonic sensors distances
 
@@ -68,8 +78,8 @@ void setup()
   myservo_grabber.attach(3);  //set its pin
   myservo_arm.attach(2);       //set its pin
 
-  myservo_grabber.write(180);    // initial the grabber be open
-  myservo_arm.write(180);        // initial the arm rasing
+  myservo_grabber.write(110);    // initial the grabber be open
+  myservo_arm.write(0);        // initial the arm rasing
 }
 
 void loop()
@@ -83,19 +93,31 @@ void loop()
   Serial.print(y);
   Serial.print(",");
   pixy.ccc.getBlocks();
+  Serial.print("Collecting iterator"); 
+  Serial.println(collecting_iterator);
+  Serial.println("H*W="); Serial.print(h*w);
+  if (collecting){
+    pick_or_not();
+  }
   if (pixy.ccc.numBlocks)
   {
     float control_variable = calculate_pid(0.0, -x);
     control_variable_to_speed(control_variable);
-    pick_or_not();
+    myservo_grabber.write(180);
+    delay(50);
+    stop_motors();
+    collecting = true;
   }
   else
   {
     // stop_motors();
     Serial.println("motors stopped");
     obstacle_avoidance();
-    // search();
+    myservo_grabber.write(110);
+    collecting = false;
+    Serial.println("Not collecting");
   }
+    // search();
 
 }
 
@@ -230,8 +252,8 @@ void get_camera_output()
     x1 = 0.26 * (pixy.ccc.blocks[0].m_x) - 42;
     y1 = 0.26 * (pixy.ccc.blocks[0].m_y) - 28;
 
-    float h = 0.26 * (pixy.ccc.blocks[0].m_height);
-    float w = 0.26 * (pixy.ccc.blocks[0].m_width);
+    h = 0.26 * (pixy.ccc.blocks[0].m_height);
+    w = 0.26 * (pixy.ccc.blocks[0].m_width);
     float temp = h * w;
     z1 = 62 - (sqrt(18 * 18 / temp)) * 58;
 
@@ -308,7 +330,7 @@ int calculate_choice(){
 
 void avoid_wall(int choice)
 {
-  if (choice == 1) // turn left 20 degree;
+  if (choice == 1) 
   {
     go_backward();
     delay(DRIVE_DELAY);
@@ -316,7 +338,7 @@ void avoid_wall(int choice)
     delay(AVOIDANCE_TURNING_DELAY);
     Serial.println("Case 1");
   }
-  else if (choice == 2) // turn_right_20_degree;
+  else if (choice == 2) 
   {
     go_backward();
     delay(DRIVE_DELAY);
@@ -324,18 +346,27 @@ void avoid_wall(int choice)
     delay(AVOIDANCE_TURNING_DELAY);
     Serial.println("Case 2");
   }
-  // case 011:
-  else if (choice == 4) // turn_right_90_degree;
-  {
-    go_backward();
-    delay(DRIVE_DELAY);
-    turn_left();
-    delay(AVOIDANCE_TURNING_DELAY);
-    Serial.println("Case 4");
-  }
+  // else if (choice == 4) 
+  // {
+    // go_backward();
+    // delay(DRIVE_DELAY);
+    // turn_left();
+    // delay(AVOIDANCE_TURNING_DELAY);
+    // Serial.println("Case 4");
+  // }
   else{
-    // search();
-    stop_motors();
+    go_forward();
+    delay(50);
+    if (search_iterator > 20){
+      search_iterator = 0;
+    }
+    else if(search_iterator > 10){
+      turn_right();
+      search_iterator++;
+    }
+    else{
+      search_iterator++;
+    }
   }
 }
 
@@ -378,14 +409,14 @@ void search(){
 }
 
 void pick_or_not(){
-  read_ultrasonic_values();
-  if (check_cube_distance() && t >= detection_sensitivity){
+  // read_ultrasonic_values();
+  if (!pixy.ccc.numBlocks){
     pick_the_cube();
   }
 }
 
 bool check_cube_distance(){
-  if (y < 0){
+  if (h*w < cube_size_threshold){
     t += 1;
     return true;
   }
@@ -397,20 +428,20 @@ bool check_cube_distance(){
 
 void pick_the_cube(){
   Serial.print("Picking up");
-  stop_motors();
-  myservo_arm.write(0);        //1.the arm moves down
-  delay(2000);                   //the grabber is waiting the arm moving down for 2s
   go_forward();
-  delay(800);
+  delay(300);
   stop_motors();
   myservo_grabber.write(110);      //2.grabber clamps
   delay(2000);                   //the arm is waiting the grabber clamping  for 2s
   // move_arm(180);  //3.the arm moves up
-  myservo_arm.write(180); 
-  delay(2000);                   //the grabber is waiting the arm moving down for 2s
-  myservo_grabber.write(180);    //4.grabber opens
   go_backward();
   delay(500);
+  stop_motors();
+  myservo_arm.write(180);
+  delay(2000); 
+  myservo_grabber.write(180);    //4.grabber opens
+  delay(1000);
+  myservo_arm.write(0); 
 }
 
 void move_arm(int angle_setpoint){
